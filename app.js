@@ -1,0 +1,31 @@
+const categories=[['Banking',[['Installment savings maturity date'],['New account opening'],['Large outgoing transactions']]],['Cards',[['Card payment due date',false],['New card statement']]]];
+const root=document.getElementById('groups');
+for(const [heading,items] of categories){const section=document.createElement('section');section.className='group';const h=document.createElement('h4');h.textContent=heading;section.append(h);for(const [label,state=true]of items){const row=document.createElement('div');row.className='row';const text=document.createElement('span');text.textContent=label;row.append(text);if(state===null){const note=document.createElement('small');note.className='subnote';note.textContent='Additional settings in the original service';text.append(note);}else{const button=document.createElement('button');button.className='switch';button.type='button';button.setAttribute('role','switch');button.setAttribute('aria-label',label);button.setAttribute('aria-checked',String(state));button.addEventListener('click',()=>button.setAttribute('aria-checked',String(button.getAttribute('aria-checked')!=='true')));row.append(button)}section.append(row)}root.append(section)}
+
+const notices=[
+['Account & Security','Security settings','Yesterday, 2:37 PM','Blocking sign-ins from overseas has been turned off. If you did not make this change, review your security history and enable protection in Security Settings.',true],
+['Financial Assets','Credit score','Yesterday, 1:56 PM','A financial institution checked your credit. Review the reason for the inquiry.',false],
+['Service Updates','MY Place','Sep 5','Coupon reminder: You have an unused coupon from Virtual Office.',false],
+['Payments & Delivery','Points earned','Aug 29','You earned 95 won in points for your right-angle drill bit purchase from Kaiten.',false]
+];
+const mutedCategories=new Set();
+let activeNotice=null;
+const actionSheet=document.createElement('dialog');
+actionSheet.className='notification-sheet';
+actionSheet.setAttribute('aria-label','Notification actions');
+actionSheet.innerHTML='<div class="sheet-options"><button type="button" id="notice-delete">Delete</button><button type="button" id="notice-mute"><strong>Turn off notifications</strong><span id="notice-mute-description"></span></button></div><button type="button" id="notice-cancel">Cancel</button>';
+document.body.append(actionSheet);
+function openNoticeActions(notice){activeNotice=notice;document.getElementById('notice-mute-description').textContent='Turn off '+notice[0]+' notifications.';document.querySelector('#notice-mute strong').textContent=mutedCategories.has(notice[0])?'Turn on notifications':'Turn off notifications';if(mutedCategories.has(notice[0]))document.getElementById('notice-mute-description').textContent='Turn on '+notice[0]+' notifications.';actionSheet.showModal();}
+function noticeButton(notice){const button=document.createElement('button');button.type='button';button.className='notice-more';button.textContent='⋮';button.setAttribute('aria-label','More options for '+notice[1]);button.setAttribute('aria-haspopup','dialog');button.addEventListener('click',()=>openNoticeActions(notice));return button;}
+const importantNotice=['Government','Property tax bill'];
+document.querySelector('.important .feed-meta').append(noticeButton(importantNotice));
+const noticeStatus=document.createElement('p');noticeStatus.className='notice-status';noticeStatus.setAttribute('role','status');document.getElementById('notification-feed').after(noticeStatus);
+document.getElementById('notice-cancel').addEventListener('click',()=>actionSheet.close());
+actionSheet.addEventListener('click',e=>{if(e.target===actionSheet)actionSheet.close()});
+document.getElementById('notice-delete').addEventListener('click',()=>{const label=activeNotice[1];if(activeNotice===importantNotice)document.querySelector('.important').hidden=true;else{const index=notices.indexOf(activeNotice);if(index>=0)notices.splice(index,1);}actionSheet.close();renderFeed();noticeStatus.textContent=label+' deleted from this demo.';document.getElementById('unread-only').focus();});
+document.getElementById('notice-mute').addEventListener('click',()=>{const category=activeNotice[0];if(mutedCategories.has(category))mutedCategories.delete(category);else mutedCategories.add(category);actionSheet.close();renderFeed();noticeStatus.textContent=category+' notifications '+(mutedCategories.has(category)?'turned off':'turned on')+' in this demo. Existing notifications are retained.';});
+let selectedCategory='All';
+const filterBar=document.querySelector('.filters');
+for(const category of ['All','Account & Security','Financial Assets','Service Updates','Payments & Delivery']){const b=document.createElement('button');b.className='filter';b.type='button';b.textContent=category;b.setAttribute('aria-pressed',String(category===selectedCategory));b.addEventListener('click',()=>{selectedCategory=category;for(const btn of filterBar.children)btn.setAttribute('aria-pressed',String(btn===b));renderFeed()});filterBar.append(b)}
+function renderFeed(){const feed=document.getElementById('notification-feed');feed.replaceChildren();const unread=document.getElementById('unread-only').checked;for(const [category,title,date,body,read]of notices){if(selectedCategory!=='All'&&category!==selectedCategory||unread&&read)continue;const article=document.createElement('article');article.className='notification'+(read?' is-read':'');const meta=document.createElement('div');meta.className='feed-meta';const name=document.createElement('strong');name.textContent=title;const time=document.createElement('span');time.textContent=date;meta.append(name,time,noticeButton(notices.find(n=>n[1]===title)));const text=document.createElement('p');text.textContent=body;const status=document.createElement('div');status.className='read-status';status.textContent=(read?'Read':'Unread')+(mutedCategories.has(category)?' · Notifications off':'');article.append(meta,text,status);feed.append(article)}if(!feed.children.length){const empty=document.createElement('p');empty.className='empty-feed';empty.textContent='No notifications match this filter.';feed.append(empty)}}
+document.getElementById('unread-only').addEventListener('change',renderFeed);renderFeed();
